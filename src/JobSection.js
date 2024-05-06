@@ -1,24 +1,44 @@
-import React from "react";
-import JobsData from "./Components/DummyData";
+import React, { useState, useEffect } from "react";
 import JobCard from "./Components/JobCard";
-import { useState, useEffect } from "react";
 import SearchBar from "./Components/SearchBar";
 
 const JobSection = () => {
   const [data, setData] = useState([]);
+  const [page, setPage] = useState(0);
+  const [firstLoad, setFirstLoad] = useState(true);
+  const [isLoading, setisLoading] = useState(true);
 
-  const FetchData = (type) => {
-    const myHeaders = new Headers();
-    myHeaders.append("Content-Type", "application/json");
-    const body = JSON.stringify({
-      limit: 10,
-      offset: 0,
-    });
+  const [role, setRole] = useState("");
+  const [minExp, setMinExp] = useState("");
+  const [minSal, setMinSal] = useState("");
+  const [location, setLocation] = useState("");
+  const [company, setCompany] = useState("");
 
+  // Change handlers being send to SearchBar component
+
+  const roleChangeHandler = (e) => {
+    setRole(e.target.value);
+    // console.log(e.target.value);
+  };
+  const minExpChangeHandler = (e) => {
+    setMinExp(e.target.value);
+  };
+  const minSalChangeHandler = (e) => {
+    setMinSal(e.target.value);
+  };
+  const locationChangeHandler = (e) => {
+    setLocation(e.target.value);
+  };
+  const companyChangeHandler = (e) => {
+    setCompany(e.target.value);
+  };
+
+  // --------------------API call to FETCHDATA  data
+  const FetchData = () => {
     const requestOptions = {
       method: "POST",
-      headers: myHeaders,
-      body,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ limit: 10, offset: page }),
     };
 
     fetch(
@@ -27,49 +47,71 @@ const JobSection = () => {
     )
       .then((response) => response.json())
       .then((result) =>
-        type === "First"
+        firstLoad
           ? setData([...result.jdList])
           : setData((prev) => [...prev, ...result.jdList])
       )
       .catch((error) => console.error(error));
+
+    setFirstLoad(false);
+    setisLoading(false);
   };
 
-  const HandleInfiniteScolling = async () => {
-    const DocHeight = document.documentElement.scrollHeight;
-    const viewportHeight = window.innerHeight;
-    const ScrollableHeight = document.documentElement.scrollTop;
-    try {
-      if (viewportHeight + ScrollableHeight + 1 >= DocHeight) FetchData();
-    } catch (error) {
-      console.log(error);
+  // --------------------Infinete Scroll Handler --------------------------
+  const HandleInfiniteScrolling = () => {
+    const scrollY = window.innerHeight + document.documentElement.scrollTop + 1;
+    const docHeight = document.documentElement.scrollHeight;
+    if (scrollY > docHeight) {
+      setisLoading(true);
+      setPage((prevPage) => prevPage + 10);
     }
   };
 
-  useEffect(() => FetchData("First"), []);
-
+  // ------------------------Window Scroll Event Listener-------------------
   useEffect(() => {
-    window.addEventListener("scroll", HandleInfiniteScolling);
+    window.addEventListener("scroll", HandleInfiniteScrolling);
+    return () => {
+      window.removeEventListener("scroll", HandleInfiniteScrolling);
+    };
   }, []);
 
-  // companyName: "Dropbox";
-  // jdLink: "https://weekday.works";
-  // jdUid: "cfff35ac-053c-11ef-83d3-06301d0a7178-92010";
-  // jobDetailsFromCompany: "This is a sample job and you must have displayed it to understand that its not just some random lorem ipsum text but something which was manually written. Oh well, if random text is what you were looking for then here it is: Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages and now in this assignment.";
-  // jobRole: "frontend";
-  // location: "delhi ncr";
-  // logoUrl: "https://logo.clearbit.com/dropbox.com";
-  // maxExp: 6;
-  // maxJdSalary: 61;
-  // minExp: 3;
-  // minJdSalary: null;
-  // salaryCurrencyCode: "USD";
+  useEffect(() => {
+    FetchData(); // Fetch additional data when page changes
+  }, [page]);
+
   return (
     <React.Fragment>
-      <SearchBar />
-      <div className=" grid grid-cols-3 p-4 mx-auto gap-10 w-full h-full">
-        {console.log(data)}
-        {data.map((item, index) => {
-          return (
+      <SearchBar
+        roleChangeHandler={roleChangeHandler} // ON Role change handler
+        minExpChangeHandler={minExpChangeHandler} //ON Experience change handler
+        minSalChangeHandler={minSalChangeHandler} //ON SALARY change handler
+        locationChangeHandler={locationChangeHandler} //ON location change
+        companyChangeHandler={companyChangeHandler} //on company Change
+        role={role}
+        minExp={minExp}
+        location={location}
+        company={company}
+        minSal={minSal}
+      />
+
+      {/* -------------jOBS dISPLAY Section ------------------- */}
+      <div className="grid sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 p-4 mx-auto gap-10 w-full h-full">
+        {data
+          ?.filter((item) => {
+            return (
+              (!company ||
+                item.companyName
+                  .toLowerCase()
+                  .includes(company.toLowerCase())) &&
+              (!role ||
+                item.jobRole.toLowerCase().includes(role.toLowerCase())) &&
+              (!minExp || item.minExp >= parseInt(minExp)) &&
+              (!minSal || item.minJdSalary >= parseInt(minSal)) &&
+              (!location ||
+                item.location.toLowerCase().includes(location.toLowerCase()))
+            );
+          })
+          .map((item, index) => (
             <JobCard
               key={index}
               JobTitle={item.jobRole.toUpperCase()}
@@ -87,9 +129,9 @@ const JobSection = () => {
               currency={item.salaryCurrencyCode}
               applylink={item.jdLink}
             />
-          );
-        })}
+          ))}
       </div>
+      {isLoading && <p className="fixed bottom-0 self-center">Loading.....</p>}
     </React.Fragment>
   );
 };

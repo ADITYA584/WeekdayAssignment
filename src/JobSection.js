@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import JobCard from "./Components/JobCard";
 import SearchBar from "./Components/SearchBar";
+import SimpleBackdrop from "./Components/Loader";
 
 const JobSection = () => {
   const [data, setData] = useState([]);
   const [page, setPage] = useState(0);
   const [firstLoad, setFirstLoad] = useState(true);
-  const [isLoading, setisLoading] = useState(true);
+  const [isLoading, setisLoading] = useState(false);
 
   const [role, setRole] = useState("");
   const [minExp, setMinExp] = useState("");
@@ -35,6 +36,7 @@ const JobSection = () => {
 
   // --------------------API call to FETCHDATA  data
   const FetchData = () => {
+    setisLoading(true);
     const requestOptions = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -54,7 +56,9 @@ const JobSection = () => {
       .catch((error) => console.error(error));
 
     setFirstLoad(false);
-    setisLoading(false);
+    setTimeout(() => {
+      setisLoading(false);
+    }, 100);
   };
 
   // --------------------Infinete Scroll Handler --------------------------
@@ -81,6 +85,7 @@ const JobSection = () => {
 
   return (
     <React.Fragment>
+      <SimpleBackdrop open={isLoading}></SimpleBackdrop>
       <SearchBar
         roleChangeHandler={roleChangeHandler} // ON Role change handler
         minExpChangeHandler={minExpChangeHandler} //ON Experience change handler
@@ -131,7 +136,6 @@ const JobSection = () => {
             />
           ))}
       </div>
-      {isLoading && <p className="fixed bottom-0 self-center">Loading.....</p>}
     </React.Fragment>
   );
 };
